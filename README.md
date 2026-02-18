@@ -1,58 +1,58 @@
 # db-schema-tools
 
-Monorepo with two components for SQL Server schema management:
+Monorepo con dos componentes para gestionar el schema de SQL Server:
 
-1. **extractor** — Connects to SQL Server, extracts metadata for all tables to JSON files
-2. **mcp** — MCP server that loads those JSONs and exposes 7 tools for on-demand schema queries
+1. **extractor** — Se conecta a SQL Server, extrae metadata de todas las tablas a archivos JSON
+2. **mcp** — Servidor MCP que carga los JSONs y expone 7 tools para consultas on-demand
 
-## Prerequisites
+## Requisitos
 
 - Docker
-- Azure CLI (`az login`) if using Azure AD authentication
+- Azure CLI (`az login`) si se usa autenticación Azure AD
 
-## Quick start
+## Inicio rápido
 
 ```powershell
-# 1. Configure connection
+# 1. Configurar conexión
 cp .env.example .env
-# Edit .env with your database connection details
+# Editar .env con los datos de tu base de datos
 
-# 2. Extract schemas
+# 2. Extraer schemas
 ./run.ps1
 
-# 3. Setup MCP for Claude Code (once per machine)
+# 3. Configurar MCP en Claude Code (una vez por máquina)
 ./setup-mcp.ps1
 ```
 
-## Project structure
+## Estructura del proyecto
 
 ```
 db-schema-tools/
 ├── extractor/
-│   ├── extract.py          # Schema extraction logic
+│   ├── extract.py          # Lógica de extracción
 │   ├── Dockerfile          # Python 3.12 + ODBC Driver 18
 │   └── requirements.txt    # pyodbc, PyYAML, azure-identity
 ├── mcp/
-│   ├── server.py           # MCP server with 7 tools
-│   ├── Dockerfile          # Python 3.12-slim (no ODBC needed)
+│   ├── server.py           # Servidor MCP con 7 tools
+│   ├── run.cmd             # Wrapper para ejecutar el container
+│   ├── Dockerfile          # Python 3.12-slim (sin ODBC)
 │   └── requirements.txt    # mcp>=1.26.0
-├── output/                 # Shared: extractor writes, MCP reads
-├── .mcp.json               # Claude Code MCP config (uses $DB_SCHEMA_OUTPUT)
-├── setup-mcp.ps1           # One-time setup: builds image + sets env var
-├── docker-compose.yml      # Both services
-├── run.ps1                 # Runs extractor with Azure AD token
-├── config.yaml             # Extraction configuration
-├── .env                    # Connection config (gitignored)
-└── .env.example            # Template for .env
+├── output/                 # Compartido: extractor escribe, MCP lee
+├── setup-mcp.ps1           # Setup: construye imagen + registra en Claude Code
+├── docker-compose.yml      # Ambos servicios
+├── run.ps1                 # Ejecuta extractor con token Azure AD
+├── config.yaml             # Configuración de extracción
+├── .env                    # Conexión a BD (gitignored)
+└── .env.example            # Template para .env
 ```
 
 ## Extractor
 
-Extracts SQL Server metadata (tables, columns, PKs, FKs, indexes, constraints, row counts) to organized JSON files.
+Extrae metadata de SQL Server (tablas, columnas, PKs, FKs, índices, constraints, row counts) a archivos JSON organizados por schema.
 
-### Authentication
+### Autenticación
 
-**Azure AD (default):**
+**Azure AD (por defecto):**
 
 ```env
 DB_AUTH=ActiveDirectoryDefault
@@ -63,52 +63,52 @@ az login
 ./run.ps1
 ```
 
-**SQL Server authentication:**
+**Autenticación SQL Server:**
 
 ```env
 DB_AUTH=SqlPassword
 DB_USER=sa
-DB_PASSWORD=your-password
+DB_PASSWORD=tu-password
 ```
 
 ```powershell
 docker compose up --build extractor
 ```
 
-### Configuration
+### Configuración
 
-See `config.yaml` for extraction options: schema/table filters, metadata toggles, output settings.
+Ver `config.yaml` para opciones de extracción: filtros de schemas/tablas, toggles de metadata, opciones de output.
 
 ### Output
 
 ```
 output/
-├── _agent_summary.json     # Compact AI-friendly summary
-├── _full_schema.json       # Complete schema (all tables)
+├── _agent_summary.json     # Resumen compacto para agentes AI
+├── _full_schema.json       # Schema completo (todas las tablas)
 ├── dbo/
-│   ├── _index.json         # Schema index with stats
-│   ├── Transaction.json    # Per-table details
+│   ├── _index.json         # Índice del schema con stats
+│   ├── Transaction.json    # Detalle por tabla
 │   └── ...
 └── {schema}/...
 ```
 
-## MCP Server
+## Servidor MCP
 
-Serves schema data on-demand via 7 tools. Builds 4 in-memory indices at startup from the JSON files in `output/`.
+Sirve datos de schema on-demand via 7 tools. Construye 4 índices en memoria al iniciar a partir de los JSONs en `output/`.
 
 ### Tools
 
-| Tool | Description |
+| Tool | Descripción |
 |---|---|
-| `list_schemas()` | All schemas with table count and row totals |
-| `list_tables(schema)` | Tables in a schema with basic stats |
-| `get_table_schema(schema, table)` | Full detail: columns, PK, FKs, indexes |
-| `search_tables(pattern)` | Find tables by name (substring match) |
-| `search_columns(column_name)` | Find which tables have a specific column |
-| `get_relationships(schema, table)` | Outgoing + incoming foreign keys |
-| `get_schema_overview(schema)` | Compact view: table name + PK only |
+| `list_schemas()` | Todos los schemas con cantidad de tablas y total de filas |
+| `list_tables(schema)` | Tablas de un schema con stats básicas |
+| `get_table_schema(schema, table)` | Detalle completo: columnas, PK, FKs, índices |
+| `search_tables(pattern)` | Buscar tablas por nombre (substring) |
+| `search_columns(column_name)` | Encontrar qué tablas tienen una columna específica |
+| `get_relationships(schema, table)` | FKs salientes + entrantes |
+| `get_schema_overview(schema)` | Vista compacta: nombre de tabla + PK |
 
-### Claude Code integration
+### Integración con Claude Code
 
 Una sola vez por máquina:
 
@@ -118,7 +118,9 @@ Una sola vez por máquina:
 
 Esto:
 1. Construye la imagen Docker `db-schema-tools-mcp`
-2. Registra el MCP server a nivel **usuario** (`--scope user`) — disponible en **todos** los proyectos
+2. Registra el MCP server a nivel **usuario** via `claude mcp add` — disponible en **todos** los proyectos
+
+No queda nada hardcodeado en el código fuente. El script `run.cmd` usa `%~dp0` para resolver paths relativos al proyecto, y `claude mcp add` resuelve el path absoluto de cada máquina al momento del setup.
 
 ### Verificar
 
