@@ -1,0 +1,19 @@
+services:
+  extractor:
+    build: ./extractor
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./output:/app/output
+    env_file:
+      - .env
+    environment:
+      # Azure AD token (injected by run.ps1 from host az login)
+      - AZURE_SQL_TOKEN=${AZURE_SQL_TOKEN}
+      # Connection string concatenated from .env vars
+      - DB_CONNECTION_STRING=Driver={${DB_DRIVER}};Server=tcp:${DB_HOST},${DB_PORT};Database=${DB_NAME};Encrypt=${DB_ENCRYPT};TrustServerCertificate=${DB_TRUST_CERT};Connection Timeout=${DB_TIMEOUT}
+
+  mcp:
+    build: ./mcp
+    volumes:
+      - ./output:/data:ro
+    stdin_open: true

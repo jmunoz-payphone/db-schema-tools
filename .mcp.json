@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "db-schema": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-v", "${DB_SCHEMA_OUTPUT}:/data:ro",
+        "db-schema-tools-mcp"
+      ]
+    }
+  }
+}

@@ -1,0 +1,46 @@
+# ============================================================
+# DB Schema Extractor - Configuration
+# ============================================================
+# Configure your SQL Server connection and extraction filters.
+# Environment variables in docker-compose.yml override these.
+# ============================================================
+
+database:
+  host: "your-server-host"
+  port: 1433
+  database: "your-database-name"
+  username: "sa"
+  password: "your-password"
+  driver: "ODBC Driver 18 for SQL Server"
+  trust_server_certificate: true
+
+extraction:
+  # Schemas to extract. Empty list = ALL schemas.
+  # Example: ["dbo", "auth", "billing"]
+  schemas: []
+
+  # Tables to extract. Empty list = ALL tables in selected schemas.
+  # Format: "schema.table"
+  # Example: ["dbo.Users", "dbo.Orders"]
+  tables: []
+
+  # Exclude specific tables
+  exclude_tables:
+    - "dbo.__MigrationHistory"
+    - "dbo.__EFMigrationsHistory"
+    - "dbo.sysdiagrams"
+
+  # Metadata to include
+  include_indexes: true
+  include_foreign_keys: true
+  include_check_constraints: true
+  include_default_constraints: true
+  include_computed_columns: true
+
+output:
+  directory: "/app/output"
+  # Single file with everything (useful for the agent)
+  generate_full_schema: true
+  # Agent-friendly summary with relationships
+  generate_agent_summary: true
+  pretty_print: true
